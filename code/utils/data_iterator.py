@@ -28,8 +28,10 @@
 # Author: Devin Anzelmo
 
 import os
+import random
 from glob import glob
 from scipy import misc
+from scipy.ndimage import interpolation
 
 import numpy as np
 from tensorflow.contrib.keras.python.keras.preprocessing.image import Iterator
@@ -61,27 +63,15 @@ def get_patches(image, image_mask):
     return small_im, small_mask
 
 
-def shift_and_pad_augmentation(image, image_mask):
-    shape = image.shape
-    new_im = np.zeros(shape)
-    new_mask = np.zeros(image_mask.shape)
-    new_mask[:,:,0] = 1
+def augmentation(image, image_mask):
+    if random.choice([True, False]):
+        image = np.fliplr(image)
+        image_mask = np.fliplr(image_mask)
 
-    im_patch, mask_patch = get_patches(image, image_mask)
-    patch_shape = im_patch.shape
-
-    ul_y = np.random.randint(0, shape[0]-patch_shape[0])
-    ul_x = np.random.randint(0, shape[1]-patch_shape[1])
-
-    new_im[ul_y:ul_y+patch_shape[0],
-           ul_x:ul_x+patch_shape[1],
-           :] = im_patch
-
-    new_mask[ul_y:ul_y+patch_shape[0],
-             ul_x:ul_x+patch_shape[1],
-             :] = mask_patch
-
-    return new_im, new_mask
+    def rotate(source, angle):
+        return interpolation.rotate(source, angle, reshape=False, mode='nearest')
+    rotation = random.uniform(-5, 5)
+    return rotate(image, rotation), rotate(image_mask, rotation)
 
 
 class BatchIteratorSimple(Iterator):
@@ -99,7 +89,7 @@ class BatchIteratorSimple(Iterator):
         mask_files = sorted(glob(os.path.join(data_folder, 'masks', '*.png')))
 
         if len(im_files) == 0:
-            raise ValueError('No image files found, check your image diractories')
+            raise ValueError('No image files found, check your image directories')
 
         if len(mask_files) == 0:
             raise ValueError('No mask files found, check your mask directories')
@@ -122,7 +112,7 @@ class BatchIteratorSimple(Iterator):
               self.index_generator)
         # The transformation of images is not under thread lock
         # so it can be done in parallel
-        
+
         batch_x = np.zeros((current_batch_size,) + self.image_shape, dtype=K.floatx())
 
 
@@ -145,12 +135,12 @@ class BatchIteratorSimple(Iterator):
                 continue
 
             else:
-                gt_image = misc.imread(file_tuple[1]).clip(0,1) 
+                gt_image = misc.imread(file_tuple[1]).clip(0,1)
                 if gt_image.shape[0] != self.image_shape[0]:
                     gt_image = misc.imresize(gt_image, self.image_shape)
 
-                #if self.shift_aug:
-                #    image, gt_image = shift_and_pad_augmentation(image, gt_image)
+                if self.shift_aug:
+                   image, gt_image = augmentation(image, gt_image)
 
                 image = preprocess_input(image.astype(np.float32))
                 batch_x[e,:,:,:] = image
