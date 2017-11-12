@@ -459,3 +459,7 @@ I ran my network in the simulator for testing. It performed well for people clos
 ## Limitations of the models
 
 The same model could be trained to classify pixels into more classes by changing the last convolution with softmax to output more classes. I belive the model would work well for detecting animals or other vehicles. However, to use it on a real robot in real time, the model would have to be reduced. Furthermore, more training samples would be required to improve its score.
+
+## Model and parameters
+
+The model and weights can be found in the [data/weights](data/weights) folder. The jupyter notebook in [code/model_training.ipynb](code/model_training.ipynb) was used for training has the graphs and results
