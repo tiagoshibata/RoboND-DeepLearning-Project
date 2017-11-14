@@ -15,6 +15,10 @@ Every block is followed by batch normalization. It helps the classifier by norma
 
 Separable convolutions were used in the model. Compared to conventional convolutions, they use less training parameters and are less prone to overfitting, and can improve runtime. A separable convolution makes use of the fact that some features observed by a convolution might be useful to multiple filters, and in a conventional convolutional layer some filters become be similar or can be represented as combinations of other filters. A separable convolution solves this problem by having less convolutions, followed by a cross-channel pooling of the convolutions (e.g. a 1x1 convolution).
 
+#### 1x1 convolutions
+
+The 1x1 convolutions are an option of channel pooling, leading to the dimentionality reduction. It works as a common convolution, but acting on a single pixel a time instead of a bidimensional kernel. The weighted sum of the filters in a given pixel then goes through a non-linear activation (ReLU was used in my network). Compared to the more classical pooling options (such as average and max), the 1x1 convolution can learn how much weight to apply to each filter. The 1x1 convolution is an effective pooling technique and, when compared to larger convolutions, lead to less overfitting due to the reduced number of parameters.
+
 The following helper functions were used:
 
 ```python
@@ -42,6 +46,8 @@ def encoder_block(input_layer, filters, strides):
     return output_layer
 ```
 
+The encoder blocks will lead to increased "depth" for the next layers (more matrices being output by multiple filters) while reducing the area (resolution) of each matrix. The goal is to have more relevant and condensed localized data at each encoder.
+
 The decoder applies upsampling to the previous layer, concatenation with a layer from the encoding stage (which works similar to step connections, giving more localized data to the decoder), and two separable convolutions with batch normalization. A helper function was used for upsampling with a bilinear filter:
 
 ```python
@@ -61,6 +67,8 @@ def decoder_block(small_ip_layer, large_ip_layer, filters):
     return output_layer
 ```
 
+The decoder will do the inverse process of the encoder, leading to less matrices with more area (higher resolution) at each block. The goal of the encoders is to transform the high density and relevant data contained in the multiple layers into fewer layers with higher resolution. Higher resolutions are achieved with upsampling. Furthermore, we use layer concatenation to pass some information from previous encoders. This way, an encoder receives the highly processed and relevant data, but also higher resolution and less processed data from a previous block. This helps the encoder detect the exact boundaries of the target when doing segmentation, since it has access to less processed data that is closer to the original image.
+
 I used a model with a large number of filters. I started with 4 encoder and 4 decoder blocks, with a 1x1 convolution with 64 filters. A final layer with softmax activation and a 1x1 kernel will receive, for each pixel, the results of the 64 filters for that position and put the pixel in one of the three classes:
 
 ```python
@@ -79,6 +87,10 @@ def fcn_model(inputs, num_classes):
 
     return layers.Conv2D(num_classes, 1, activation='softmax', padding='same')(x)
 ```
+
+#### Fully connected layers
+
+A fully connected layer connects all inputs to each neuron to generate outputs. It is one of the primitives of neural networks. It is not suitable for use in most stages of image processing due to the excessive number of parameters and operations, which would lead to poor runtime performance and strong overfitting; furthermore, using it would make it harder for the network to learn localized data. However, it is used in some applications, such as the final layers of a classification network; after a series of convolutions, a fully connected layer is used to put the image on a class based on knoledge of all the output from the last convolutional layer. A classical fully connected layer was not used in my network.
 
 ## Hyper parameters and training
 
@@ -458,7 +470,9 @@ I ran my network in the simulator for testing. It performed well for people clos
 
 ## Limitations of the models
 
-The same model could be trained to classify pixels into more classes by changing the last convolution with softmax to output more classes. I belive the model would work well for detecting animals or other vehicles. However, to use it on a real robot in real time, the model would have to be reduced. Furthermore, more training samples would be required to improve its score.
+The same model could be trained to classify pixels into more classes by changing the last convolution with softmax to output more classes. For example, this model could detect humans and dogs. I believe it is deep enough to output more classes with few changes, other than the final layer. However, to use it on a real robot in real time, the model would have to be reduced. Furthermore, more training samples would be required to improve its score, and much more to train on more classes.
+
+Another problem to consider is that adding more classes might incur in recollection or relabelling of existing data. For example, if we were to detect both people and cars, the existing images containing cars would have to be labelled again, else the car would be marked as background.
 
 ## Model and parameters
 
