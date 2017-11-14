@@ -94,6 +94,14 @@ A fully connected layer connects all inputs to each neuron to generate outputs. 
 
 ## Hyper parameters and training
 
+The following hyper parameters were configured:
+* Number of epochs: An epoch is a pass through the full training dataset. Adding more epochs will usually result in better results and longer training time. However, if the limits of the model are reached (the model is not deep enough), more epochs will hardly make a difference and the loss won't change. One possible problem of adding more epochs is higher likelyhood of overfitting to the training data if the dataset is small; in this case, the training loss decreases while the validation loss increases.
+* Learning Rate: The learning rate parameter of the optimization algorithm. It controls how fast the algorithm will move in the descending gradient direction trying to reduce the training loss. A too large training rate can lead to a training that does not converge or oscillates around the optimal point. A too low training rate leads to a slowly converging training.
+* Batch Size: Size of a image batch. Training is done in batches, since the datasets are large. Batches scale well in dataset and network size. The batch size controls the number of images in a single batch. I used the largest number supported by the GPU memory.
+* Number of workers: Number of CPU workers (threads). Adding more workers will add more threads to load, preprocess and augment data. I left it at 2 and ran some training, watching GPU and CPU usage. GPU usage was always close to 100%, indicating that preprocessing and augmentation was not bottlenecking the training. I used 2 workers throughout the other trainings.
+* Steps per epoch: Number of steps to run on each epoch. Since it's recommended that an epoch passes through the whole dataset, it should contain `(image count) / (batch size)` steps. I used the recommended value.
+* Validation steps: Number of validation steps to estimate the validation loss. I started at 50 and later adjusted when trying to reduce oscillations in the validation loss.
+
 I didn't have a baseline of values to train with, so for my first testing I followed the recommended values in Keras documentation. I used the [default learning rate for the Adam optimizer](https://keras.io/optimizers/#adam) (0.001). I used the largest batch size that could fit in GPU memory (the training was run in an AWS machine with a K80 GPU, and I could use 75 images in a batch), started with 40 epochs, used the [recommended number of steps per epoch to cover all samples](https://keras.io/models/sequential/) (number of training samples divided by batch size), 50 validation steps and 2 workers.
 
 ```python
